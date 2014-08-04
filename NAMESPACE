@@ -1,0 +1,25 @@
+importFrom("RCurl",
+           "curlOptions", "getURL", "postForm", "fileUpload",
+           "basicHeaderGatherer", "basicTextGatherer")
+
+importFrom("XML",
+           "xmlParse", "getNodeSet", "xmlToDataFrame")
+
+export("w3c_markup_validate",
+       "w3c_markup_validate_baseurl",
+       "w3c_markup_validate_db",
+       "w3c_markup_validate_files",
+       "w3c_markup_validate_uris",
+       "inspect")
+
+S3method("format", "w3c_markup_validate")
+S3method("print", "w3c_markup_validate")
+S3method("as.data.frame", "w3c_markup_validate")
+
+S3method("[", "w3c_markup_validate_db")
+S3method("print", "w3c_markup_validate_db")
+S3method("as.data.frame", "w3c_markup_validate_db")
+S3method("c", "w3c_markup_validate_db")
+
+S3method("inspect", "w3c_markup_validate")
+S3method("inspect", "w3c_markup_validate_db")

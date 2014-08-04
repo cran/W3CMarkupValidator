@@ -1,0 +1,10 @@
+97115ce47441ea3db0ef0211cfc8623b *DESCRIPTION
+3eabe20b54333c66c975eabbfa937ebe *NAMESPACE
+151b1ec415134e50720ccd484c212c13 *R/w3c.R
+9c5209ed2adae2d312a08c0c2d2d3612 *inst/examples/file1_isvalid.html
+959806c7e1c28a4ca0f5a30b672a6e0c *inst/examples/file2_novalid.html
+2ad77dbbc91a6b09fe002229986e0367 *inst/examples/file3_failure.html
+76969a3d3b2db7c89e6a2e394ca598fc *man/inspect.Rd
+bf5124022ebaea971b3c7cb26faadfc7 *man/w3c_markup_validate.Rd
+4c943cdf9e3550d0eae8d869f7775d0f *man/w3c_markup_validate_baseurl.Rd
+9c6a0cbec422de0ccb0ffb069c094c0a *man/w3c_markup_validate_db.Rd
