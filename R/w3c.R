@@ -1,15 +1,17 @@
 w3c_markup_validate_baseurl_default <-
-    "http://validator.w3.org/check?"
+function()
+    Sys.getenv("W3C_MARKUP_VALIDATOR_BASEURL",
+               "http://validator.w3.org/check?")
 
 w3c_markup_validate_baseurl <-
 local({
-    baseurl <- w3c_markup_validate_baseurl_default
+    baseurl <- w3c_markup_validate_baseurl_default()
     function(new) {
         if(missing(new))
             baseurl
         else {
             baseurl <<- if(is.null(new))
-                w3c_markup_validate_baseurl_default
+                w3c_markup_validate_baseurl_default()
             else
                 new
         }
@@ -101,7 +103,7 @@ function(baseurl = w3c_markup_validate_baseurl(),
         y <- as.data.frame(matrix(NA_character_, nrow(x),
                                   length(elements)))
         pos <- match(elements, colnames(x), nomatch = 0L)
-        y[, pos > 0L] <- unlist(x[, pos])
+        y[, pos > 0L] <- strstrip(unlist(x[, pos]))
         colnames(y) <- elements
         y        
     }
@@ -305,4 +307,15 @@ function(x, details = TRUE, full = FALSE, ...)
                      collapse = "\n\n"))
 }
 
-is_invalid <- function(x) identical(x$valid, FALSE)
+is_invalid <-
+function(x)
+    identical(x$valid, FALSE)
+
+strstrip <-
+function(x) 
+{
+    x <- sub("^[[:space:]]+", "", x)
+    x <- sub("[[:space:]]+$", "", x)
+    x
+}
+    

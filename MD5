@@ -1,10 +1,11 @@
-97115ce47441ea3db0ef0211cfc8623b *DESCRIPTION
+076ed589688cdb40935da34c248ecbd2 *DESCRIPTION
 3eabe20b54333c66c975eabbfa937ebe *NAMESPACE
-151b1ec415134e50720ccd484c212c13 *R/w3c.R
+38543ef441cffe7f016a386e8172e270 *R/w3c.R
+799c4d88dab9aca228548b5b89e9b1a7 *R/zzz.R
 9c5209ed2adae2d312a08c0c2d2d3612 *inst/examples/file1_isvalid.html
 959806c7e1c28a4ca0f5a30b672a6e0c *inst/examples/file2_novalid.html
 2ad77dbbc91a6b09fe002229986e0367 *inst/examples/file3_failure.html
 76969a3d3b2db7c89e6a2e394ca598fc *man/inspect.Rd
-bf5124022ebaea971b3c7cb26faadfc7 *man/w3c_markup_validate.Rd
-4c943cdf9e3550d0eae8d869f7775d0f *man/w3c_markup_validate_baseurl.Rd
-9c6a0cbec422de0ccb0ffb069c094c0a *man/w3c_markup_validate_db.Rd
+a15bd67a864f0042232f1493febe9452 *man/w3c_markup_validate.Rd
+bc322a3b47da19cab140a2151c44a57b *man/w3c_markup_validate_baseurl.Rd
+a336d618c577bc5e33a1fe1f2b7f8453 *man/w3c_markup_validate_db.Rd

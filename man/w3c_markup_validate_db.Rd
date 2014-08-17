@@ -66,4 +66,6 @@ table(substring(df$message, 1L, 60L))
 ## Inspect a particular set of error messages:
 df[df$message == "element \"font\" undefined", ]
 ## (Note that explanations are in HTML ...)
+## Conveniently view the full records (modulo HTML markup):
+write.dcf(df)
 }

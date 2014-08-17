@@ -59,14 +59,21 @@ w3c_markup_validate(baseurl = w3c_markup_validate_baseurl(),
 \note{
   The validation service provided by the W3C used by default for
   validation is a shared and free resource, and the W3C asks (see
-  \url{http://validator.w3.org/docs/api.html} for considerate use and
+  \url{http://validator.w3.org/docs/api.html}) for considerate use and
   possibly installing a local instance of the validation service: 
   excessive use of the service will be blocked.
 
   On Debian-based systems, a local instance can conveniently be
-  installed via the system command \command{apt-get install
-  w3c-markup-validator} and following the instructions for providing the
-  validator as a web service.
+  installed via the system command
+  \command{apt-get install w3c-markup-validator}
+  and following the instructions for providing the validator as a web
+  service.
+
+  One can use the environment variable
+  \env{W3C_MARKUP_VALIDATOR_BASEURL} to specify the service to be
+  employed by default.  E.g., one can set this to
+  \code{"http://localhost/w3c-validator/check"}
+  for Debian-based systems as discussed above.
 }
 \seealso{
   \code{\link{w3c_markup_validate_baseurl}} for getting and setting the
