@@ -69,6 +69,10 @@ function(baseurl = w3c_markup_validate_baseurl(),
     ## See <http://validator.w3.org/docs/api.html>.
 
     header <- bhg$value()
+    status <- header["status"]
+    if((as.integer(status) %/% 100) != 2L)
+        stop(sprintf("Validation request failed with status %s and message:\n%s",
+                     status, trimws(header["statusMessage"])))
     status <- header["X-W3C-Validator-Status"]
     if(is.na(status))
         stop("Not a W3C validator.")

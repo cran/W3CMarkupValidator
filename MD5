@@ -1,6 +1,6 @@
-076ed589688cdb40935da34c248ecbd2 *DESCRIPTION
+f69b03748ad97705bfc23074dbf7f03f *DESCRIPTION
 3eabe20b54333c66c975eabbfa937ebe *NAMESPACE
-38543ef441cffe7f016a386e8172e270 *R/w3c.R
+647faa8ad18d7587526df46cc6beaafd *R/w3c.R
 799c4d88dab9aca228548b5b89e9b1a7 *R/zzz.R
 9c5209ed2adae2d312a08c0c2d2d3612 *inst/examples/file1_isvalid.html
 959806c7e1c28a4ca0f5a30b672a6e0c *inst/examples/file2_novalid.html
