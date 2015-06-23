@@ -61,7 +61,9 @@ w3c_markup_validate(baseurl = w3c_markup_validate_baseurl(),
   validation is a shared and free resource, and the W3C asks (see
   \url{http://validator.w3.org/docs/api.html}) for considerate use and
   possibly installing a local instance of the validation service: 
-  excessive use of the service will be blocked.
+  excessive use of the service will be blocked.  In fact, it seems that
+  since May 2015 W3C blocks access to the SOAP API, so one needs to use
+  a different (local) validation service.
 
   On Debian-based systems, a local instance can conveniently be
   installed via the system command
@@ -83,6 +85,8 @@ w3c_markup_validate(baseurl = w3c_markup_validate_baseurl(),
   collections of single validation results.
 }
 \examples{
-## Not much to show with this as it should validate ok:
-w3c_markup_validate(uri = "http://CRAN.R-project.org")
+## Not much to show with this as it should validate ok
+## (provided that the validation service is accessible):
+tryCatch(w3c_markup_validate(uri = "http://CRAN.R-project.org"),
+         error = identity)
 }
