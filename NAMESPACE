@@ -5,6 +5,9 @@ importFrom("RCurl",
 importFrom("XML",
            "xmlParse", "getNodeSet", "xmlToDataFrame")
 
+importFrom("utils",
+           "URLencode")
+
 export("w3c_markup_validate",
        "w3c_markup_validate_baseurl",
        "w3c_markup_validate_db",
