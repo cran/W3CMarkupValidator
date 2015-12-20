@@ -34,46 +34,38 @@ function(baseurl = w3c_markup_validate_baseurl(),
     ## Be nice and add the question mark at the end if not given.
     if(substring(baseurl, nchar(baseurl)) != "?")
         baseurl <- paste0(baseurl, "?")
+
+    h <- new_handle()
+    handle_setopt(h, .list = opts)
     
-    bhg <- basicHeaderGatherer()
-    btg <- basicTextGatherer()
-    opts <- curlOptions(headerfunction = bhg$update,
-                        useragent = "RCurl",
-                        .opts = opts)
-    ## We always need the header info.
-    ## Specifying a headerfunction when calling postForm() results in
-    ## having the results written out by default, so that an explicit
-    ## writefunction is needed.
-    
-    results <- if(!is.null(uri)) {
-        getURL(sprintf("%suri=%s;output=soap12", baseurl,
-                       URLencode(uri)),
-               .opts = opts)
+    response <- if(!is.null(uri)) {
+        curl_fetch_memory(sprintf("%suri=%s;output=soap12", baseurl,
+                                  URLencode(uri)),
+                          h)
     } else {
-        opts <- curlOptions(writefunction = btg$update,
-                            .opts = opts)
         if(!is.null(file)) {
-            postForm(baseurl,
-                     uploaded_file = fileUpload(file, contentType = "text/html"),
-                     output = "soap12",
-                     .opts = opts)
+            handle_setform(h,
+                           uploaded_file = form_file(file, "text/html"),
+                           output = "soap12")
         } else if(!is.null(string)) {
-            postForm(baseurl,
-                     fragment = paste(string, collapse = "\n"),
-                     output = "soap12",
-                     .opts = opts)
+            handle_setform(h,
+                           fragment = paste(string, collapse = "\n"),
+                           output = "soap12")
         } else
             stop("You must specify one of 'uri', 'file' or 'string'.")
+        curl_fetch_memory(baseurl, h)
     }
 
     ## See <http://validator.w3.org/docs/api.html>.
 
-    header <- bhg$value()
-    status <- header["status"]
+    status <- response$status_code
+    fields <- .status_and_headers(response)
+
     if((as.integer(status) %/% 100) != 2L)
         stop(sprintf("Validation request failed with status %s and message:\n%s",
-                     status, trimws(header["statusMessage"])))
-    status <- header["X-W3C-Validator-Status"]
+                     status, trimws(fields["Reason-Phrase"])))
+
+    status <- fields["X-W3C-Validator-Status"]
     if(is.na(status))
         stop("Not a W3C validator.")
     valid <- status == "Valid"
@@ -83,31 +75,28 @@ function(baseurl = w3c_markup_validate_baseurl(),
     out$valid <- as.logical(valid)
 
     ## Note that Valid is equivalent to no errors.
-    errorcount <- as.integer(header["X-W3C-Validator-Errors"])
-    warningcount <- as.integer(header["X-W3C-Validator-Warnings"])
+    errorcount <- as.integer(fields["X-W3C-Validator-Errors"])
+    warningcount <- as.integer(fields["X-W3C-Validator-Warnings"])
 
     ## If there are no errors or warnings, there is no point looking at
     ## the body (as long as we do not obtain debug info).
     if((errorcount == 0L) && (warningcount == 0L)) return(out)
 
-    if(is.null(results)) results <- btg$value()
-    doc <- xmlParse(results)
-
-    nodes <- getNodeSet(doc, "/env:Envelope/env:Body")
+    doc <- read_xml(rawToChar(response$content))
+    ns <- xml_ns(doc)
+    nodes <- xml_find_all(doc, "/env:Envelope/env:Body", ns)
     if(length(nodes) != 1L)
         stop("Result format does not appear to be SOAP.")
-    doc <- nodes[[1L]][[1L]]
+    doc <- nodes[[1L]]
 
     messages <- function(doc, path) {
         elements <- w3c_markup_validate_message_elements
-        x <- xmlToDataFrame(getNodeSet(doc, path),
-                            stringsAsFactors = FALSE)
+        x <- lapply(xml_find_all(doc, path, ns),
+                    function(e)
+                    trimws(.xml_children_values(e))[elements])
         ## In case we found no messages ...
-        if(!NROW(x)) return(NULL)
-        y <- as.data.frame(matrix(NA_character_, nrow(x),
-                                  length(elements)))
-        pos <- match(elements, colnames(x), nomatch = 0L)
-        y[, pos > 0L] <- strstrip(unlist(x[, pos]))
+        if(!length(x)) return(NULL)
+        y <- as.data.frame(do.call(rbind, x), stringsAsFactors = FALSE)
         colnames(y) <- elements
         y        
     }
@@ -315,11 +304,24 @@ is_invalid <-
 function(x)
     identical(x$valid, FALSE)
 
-strstrip <-
-function(x) 
+.status_and_headers <-
+function(response)
 {
-    x <- sub("^[[:space:]]+", "", x)
-    x <- sub("[[:space:]]+$", "", x)
-    x
+    lines <- parse_headers(response$headers)
+    parts <- strsplit(lines[1L], " ")[[1L]]
+    s <- c("Status-Code" = parts[2L],
+           "Reason-Phrase" = paste(parts[-c(1L, 2L)], collapse = " "))
+    lines <- lines[-1L]
+    h <- sub("[^:]+: (.*)", "\\1", lines)
+    names(h) <- sub("([^:]+):.*", "\\1", lines)
+    c(s, h)
 }
-    
+
+.xml_children_values <-
+function(x)
+{
+    kids <- xml_children(x)
+    y <- xml_text(kids)
+    names(y) <- xml_name(kids)
+    y
+}
