@@ -87,6 +87,6 @@ w3c_markup_validate(baseurl = w3c_markup_validate_baseurl(),
 \examples{
 ## Not much to show with this as it should validate ok
 ## (provided that the validation service is accessible):
-tryCatch(w3c_markup_validate(uri = "http://CRAN.R-project.org"),
+tryCatch(w3c_markup_validate(uri = "https://CRAN.R-project.org"),
          error = identity)
 }

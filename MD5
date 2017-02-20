@@ -1,4 +1,4 @@
-64b8c77161ccd9a56d45ce1a9377f445 *DESCRIPTION
+064d7cf6fec788d7ae1244da3f299139 *DESCRIPTION
 359e76e4d3e3c8a55c5651689aeabd00 *NAMESPACE
 4754ad584aeb75cd2f9c668007761358 *R/w3c.R
 799c4d88dab9aca228548b5b89e9b1a7 *R/zzz.R
@@ -6,6 +6,6 @@
 959806c7e1c28a4ca0f5a30b672a6e0c *inst/examples/file2_novalid.html
 2ad77dbbc91a6b09fe002229986e0367 *inst/examples/file3_failure.html
 76969a3d3b2db7c89e6a2e394ca598fc *man/inspect.Rd
-8721407c9162d4816b5862d17ab17768 *man/w3c_markup_validate.Rd
+aa13452eea45d844a6ec358cf19fb184 *man/w3c_markup_validate.Rd
 bc322a3b47da19cab140a2151c44a57b *man/w3c_markup_validate_baseurl.Rd
 55fb6d65754417db8b9715b9a6d3b25f *man/w3c_markup_validate_db.Rd
