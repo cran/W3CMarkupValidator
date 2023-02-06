@@ -29,7 +29,7 @@ w3c_markup_validate(baseurl = w3c_markup_validate_baseurl(),
   Validation is then performed by using the W3C Markup Validation
   service at the given \acronym{URL}, using the (still declared
   \dQuote{experimental}) SOAP 1.2 API of such a service (see
-  \url{http://validator.w3.org/docs/api.html} for more information).
+  \url{https://validator.w3.org/docs/api.html} for more information).
 
   If a SOAP validation response could be obtained,
   \code{w3c_markup_validate()} returns the information in the response
@@ -59,7 +59,7 @@ w3c_markup_validate(baseurl = w3c_markup_validate_baseurl(),
 \note{
   The validation service provided by the W3C used by default for
   validation is a shared and free resource, and the W3C asks (see
-  \url{http://validator.w3.org/docs/api.html}) for considerate use and
+  \url{https://validator.w3.org/docs/api.html}) for considerate use and
   possibly installing a local instance of the validation service: 
   excessive use of the service will be blocked.  In fact, it seems that
   since May 2015 W3C blocks access to the SOAP API, so one needs to use
