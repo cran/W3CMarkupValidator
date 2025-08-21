@@ -9,10 +9,19 @@
 \usage{
 w3c_markup_validate_db(x, names = NULL)
 
-w3c_markup_validate_files(files, baseurl = w3c_markup_validate_baseurl(),
-                          opts = list())                    
-w3c_markup_validate_uris(uris, baseurl = w3c_markup_validate_baseurl(),
-                         opts = list())
+w3c_markup_validate_files(files,
+                          baseurl = w3c_markup_validate_baseurl(),
+                          opts = list(),
+                          jar = NULL,
+                          verbose = interactive(),
+                          Ncpus = getOption("Ncpus", 1L))
+
+w3c_markup_validate_uris(uris,
+                         baseurl = w3c_markup_validate_baseurl(),
+                         opts = list(),
+                         jar = NULL,
+                         verbose = interactive(),
+                         Ncpus = getOption("Ncpus", 1L))
 }
 \arguments{
   \item{x}{a list of \code{\link{w3c_markup_validate}} results.}
@@ -21,9 +30,14 @@ w3c_markup_validate_uris(uris, baseurl = w3c_markup_validate_baseurl(),
     \code{x} or to auto-generate names if these are \code{NULL}.}
   \item{files}{a character vector giving the names of files to validate.}
   \item{uris}{a character vector giving \acronym{URI}s to validate.}
-  \item{baseurl}{a character string giving the \acronym{URL} of the W3C Markup
-    Validation service to employ.}
+  \item{baseurl}{a character string giving the \acronym{URL} of the W3C
+    Markup Validation service to employ.}
   \item{opts}{see \code{\link{w3c_markup_validate}}.}
+  \item{jar}{see \code{\link{w3c_markup_validate}}.}
+  \item{verbose}{a logical indicating if some \dQuote{progress report}
+    should be given.} 
+  \item{Ncpus}{the number of parallel processes to use for validating in
+    parallel.} 
 }
 \details{
   \code{w3c_markup_validate_db()} creates a db (data base) of
@@ -51,8 +65,8 @@ w3c_markup_validate_uris(uris, baseurl = w3c_markup_validate_baseurl(),
 ## Test files provided with this package:
 dir <- system.file("examples", package = "W3CMarkupValidator")
 files <- Sys.glob(file.path(dir, "*.html"))
-if(!grepl("^http://validator.w3.org",
-          w3c_markup_validate_baseurl())) {
+if(!startsWith(w3c_markup_validate_baseurl(),
+               "https://validator.w3.org")) {
     ## Validate.
     results <- w3c_markup_validate_files(files)
     results
@@ -66,8 +80,7 @@ if(!grepl("^http://validator.w3.org",
     ## Tabulate error messages:
     table(substring(df$message, 1L, 60L))
     ## Inspect a particular set of error messages:
-    df[df$message == "element \"font\" undefined", ]
-    ## (Note that explanations are in HTML ...)
+    df[startsWith(df$message, "Unclosed element"), ]
     ## Conveniently view the full records (modulo HTML markup):
     write.dcf(df)
 }

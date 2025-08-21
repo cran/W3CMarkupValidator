@@ -1,14 +1,12 @@
 importFrom("curl",
-           "curl_fetch_memory", "form_file",
-           "handle_setform", "handle_setopt", "new_handle",
-           "parse_headers")
+           "curl_fetch_memory", "handle_setform", "handle_setopt",
+           "new_handle")
            
 importFrom("utils",
            "URLencode")
 
-importFrom("xml2",
-           "read_xml", "xml_children", "xml_find_all", "xml_name",
-           "xml_ns", "xml_text")
+importFrom("jsonlite",
+           "fromJSON")
 
 export("w3c_markup_validate",
        "w3c_markup_validate_baseurl",

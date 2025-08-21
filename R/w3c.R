@@ -1,7 +1,11 @@
+use("curl")
+
+Sys.unsetenv("W3C_MARKUP_VALIDATOR_BASEURL")
+
 w3c_markup_validate_baseurl_default <-
 function()
     Sys.getenv("W3C_MARKUP_VALIDATOR_BASEURL",
-               "http://validator.w3.org/check?")
+               "https://validator.w3.org/nu/?")
 
 w3c_markup_validate_baseurl <-
 local({
@@ -18,102 +22,121 @@ local({
     }
 })
 
-w3c_markup_validate_message_elements <-
-    c("line", "col", "message", "messageid", "explanation", "source")
-
 w3c_markup_validate <-
 function(baseurl = w3c_markup_validate_baseurl(),
          uri = NULL, file = NULL, string = NULL,
+         opts = list(), jar = NULL)
+{
+    if(!is.null(jar))
+        w3c_markup_validate_via_jar(uri, file, string,
+                                    jar)
+    else
+        w3c_markup_validate_via_web(uri, file, string,
+                                    baseurl, opts)
+}
+
+w3c_markup_validate_via_web <-
+function(uri = NULL, file = NULL, string = NULL,
+         baseurl = w3c_markup_validate_baseurl(),
          opts = list())
 {
-    out <- list(valid = TRUE,
-                errorcount = 0L, errors = NULL,
-                warningcount = 0L, warnings = NULL)
-    class(out) <- "w3c_markup_validate"
-
     ## Be nice and add the question mark at the end if not given.
-    if(substring(baseurl, nchar(baseurl)) != "?")
+    if(!endsWith(baseurl, "?"))
         baseurl <- paste0(baseurl, "?")
 
-    h <- new_handle()
-    handle_setopt(h, .list = opts)
+    res <- if(!is.null(uri)) {
+               h <- new_handle()
+               handle_setopt(h, .list = opts)
+               curl_fetch_memory(sprintf("%sdoc=%s&out=json", baseurl,
+                                         URLencode(uri)),
+                                 handle = h)
+           } else {
+               html <- if(!is.null(file)) {
+                           readBin(file, raw(), file.info(file)$size)
+                       } else if(!is.null(string)) {
+                           charToRaw(string)
+                       } else
+                           stop("You must specify one of 'uri', 'file' or 'string'.")
+               h <- new_handle(postfields = html,
+                               httpheader = "Content-Type: text/html")
+               handle_setopt(h, .list = opts)
+               curl_fetch_memory(sprintf("%sout=json", baseurl),
+                                 handle = h)
+           }
     
-    response <- if(!is.null(uri)) {
-        curl_fetch_memory(sprintf("%suri=%s;output=soap12", baseurl,
-                                  URLencode(uri)),
-                          h)
-    } else {
-        if(!is.null(file)) {
-            handle_setform(h,
-                           uploaded_file = form_file(file, "text/html"),
-                           output = "soap12")
-        } else if(!is.null(string)) {
-            handle_setform(h,
-                           fragment = paste(string, collapse = "\n"),
-                           output = "soap12")
-        } else
-            stop("You must specify one of 'uri', 'file' or 'string'.")
-        curl_fetch_memory(baseurl, h)
-    }
-
-    ## See <http://validator.w3.org/docs/api.html>.
-
-    status <- response$status_code
-    fields <- .status_and_headers(response)
-
+    status <- res$status_code
     if((as.integer(status) %/% 100) != 2L)
-        stop(sprintf("Validation request failed with status %s and message:\n%s",
-                     status, trimws(fields["Reason-Phrase"])))
+        stop("Validation request failed")
 
-    status <- fields["X-W3C-Validator-Status"]
-    if(is.na(status))
-        stop("Not a W3C validator.")
-    valid <- status == "Valid"
-    if(!valid && (status != "Invalid"))
-        stop("Validation failed.")
-    ## Maybe provide status code or message in this case?
-    out$valid <- as.logical(valid)
+    w3c_markup_validate_results_from_JSON(rawToChar(res$content))
+}
+    
+w3c_markup_validate_via_jar <-
+function(uri = NULL, file = NULL, string = NULL, jar)
+{
+    if(!is.character(jar) ||
+       length(jar) != 1L ||
+       !file.exists(jar))
+        stop("Argument 'jar' must give the file path to 'vnu.jar'.")
 
-    ## Note that Valid is equivalent to no errors.
-    errorcount <- as.integer(fields["X-W3C-Validator-Errors"])
-    warningcount <- as.integer(fields["X-W3C-Validator-Warnings"])
+    java <- tools::Rcmd(c("config", "JAVA"), stdout = TRUE)
+    if(!nzchar(java))
+        java <- Sys.which("java")
+    if(!nzchar(java))
+        stop("Cannot find a Java executable.")
 
-    ## If there are no errors or warnings, there is no point looking at
-    ## the body (as long as we do not obtain debug info).
-    if((errorcount == 0L) && (warningcount == 0L)) return(out)
-
-    doc <- read_xml(rawToChar(response$content))
-    ns <- xml_ns(doc)
-    nodes <- xml_find_all(doc, "/env:Envelope/env:Body", ns)
-    if(length(nodes) != 1L)
-        stop("Result format does not appear to be SOAP.")
-    doc <- nodes[[1L]]
-
-    messages <- function(doc, path) {
-        elements <- w3c_markup_validate_message_elements
-        x <- lapply(xml_find_all(doc, path, ns),
-                    function(e)
-                    trimws(.xml_children_values(e))[elements])
-        ## In case we found no messages ...
-        if(!length(x)) return(NULL)
-        y <- as.data.frame(do.call(rbind, x), stringsAsFactors = FALSE)
-        colnames(y) <- elements
-        y        
+    if(is.null(file)) {
+        file <- tempfile()
+        on.exit(unlink(file))
+        if(!is.null(uri))
+            utils::download.file(uri, file, quiet = TRUE)
+        else if(!is.null(string))
+            writeLines(string, file, useBytes = TRUE)
+        else
+            stop("You must specify one of 'uri', 'file' or 'string'.")
     }
 
-    if(errorcount > 0L) {
-        out$errorcount <- errorcount
-        out$errors <-
-            messages(doc, "//m:errors/m:errorlist/m:error")
-    }
+    txt <- system2(java,
+                   c("-jar", jar, "--stdout", "--format json", file),
+                   stdout = TRUE)
 
-    if(warningcount > 0L) {
-        out$warningcount <- warningcount
-        out$warnings <-
-            messages(doc, "//m:warnings/m:warninglist/m:warning")
-    }
+    w3c_markup_validate_results_from_JSON(txt)
+}
+
+w3c_markup_validate_results_from_JSON <-
+function(txt)    
+{
+    out <- fromJSON(txt)$messages
+
+    ## The docs at <https://validator.w3.org/docs/api.html> say that for
+    ## the messages object only 'type' is mandatory, and if 'firstLine'
+    ## is missing it is assumed to have the same value as 'lastLine'.
+
+    n <- NROW(out)    
+    for(k in setdiff(c("lastLine", "lastColumn", "firstColumn"),
+                     names(out)))
+        out[[k]] <- rep_len(NA_integer_, n)
+    if("firstLine" %notin% names(out))
+        out$firstLine <- out$lastLine
+    for(k in setdiff(c("message", "extract", "subType"),
+                     names(out)))
+        out[[k]] <- rep_len(NA_character_, n)
+
+    out <- out[c("type", "subType",
+                 "firstLine", "firstColumn", "lastLine", "lastColumn",
+                 "message", "extract")]
+
+    class(out) <- c("w3c_markup_validate", class(out))
 
     out
+}
+w3c_markup_validate_results_pos_by_cat <-
+function(x)
+{
+    i <- x$type == "info"
+    j <- !is.na(s <- x$subType) & (s == "warning")
+    s <- seq_along(i)
+    list(errors = s[!i], warnings = s[i & j], infos = s[i & !j])
 }
 
 print.w3c_markup_validate <-
@@ -128,47 +151,37 @@ function(x, details = TRUE, ...)
 {
     fmt <- function(m) {
         sprintf("  %s %s  %s",
-                format(c("line", m[, "line"]), justify = "right"),
-                format(c(" col", m[,  "col"]), justify = "right"),
+                format(c("line", m$firstLine), justify = "right"),
+                format(c(" col", m$firstColumn), justify = "right"),
                 c("message",
-                  gsub("[[:space:]]*\n[[:space:]]*", "  ",
-                       m[, "message"])))
+                  gsub("[[:space:]]*\n[[:space:]]*", "  ", m$message)))
+                  
     }
 
-    y <- sprintf("Valid: %s (errors: %d, warnings: %d)",
-                 x$valid,
-                 x$errorcount,
-                 x$warningcount)
+    p <- w3c_markup_validate_results_pos_by_cat(x)
+    n <- lengths(p)
+    y <- sprintf("Valid: %s (%s)",
+                 n[1L] + n[2L] == 0,
+                 paste(names(n), n, sep = ": ", collapse = ", "))
 
     details <- if(is.character(details)) {
-        !is.na(pmatch(c("e", "w"), details))
+        !is.na(pmatch(c("e", "w", "i"), details))
     } else
-        rep_len(details, 2L)
-    
-    if(details[1L] && (NROW(x$errors) > 0L)) {
-        y <- c(y, "Errors:", fmt(x$errors))
-    }
-    if(details[2L] && (NROW(x$warnings) > 0L)) {
-        y <- c(y, "Warnings:", fmt(x$warnings))
-    }
+        rep_len(details, 3L)
+
+    if(details[1L] && n[1L])
+        y <- c(y, "Errors:", fmt(x[p$errors, ]))
+    if(details[2L] && n[2L])
+        y <- c(y, "Warnings:", fmt(x[p$warnings, ]))
+    if(details[3L] && n[3L])
+        y <- c(y, "Infos:", fmt(x[p$infos, ]))
 
     y
 }
 
 as.data.frame.w3c_markup_validate <-
 function(x, row.names = NULL, optional = FALSE, ...)
-{
-    y <- matrix("", 0L, length(w3c_markup_validate_message_elements) + 1L)
-    y <- rbind(as.data.frame(y, stringsAsFactors = FALSE),
-               if(NROW(m <- x$errors)) {
-                   cbind(m, category = "error")
-               },
-               if(NROW(m <- x$warnings)) {
-                   cbind(m, category = "warning")
-               })
-    names(y) <- c(w3c_markup_validate_message_elements, "category")
-    y
-}
+    x
 
 w3c_markup_validate_db <-
 function(x, names = NULL)
@@ -184,14 +197,14 @@ function(x, names = NULL)
     names(x) <- names
     ## Better put on the names first: otherwise handling failures is
     ## more tricky.
-    ind <- sapply(x, inherits, "error")
+    ind <- vapply(x, inherits, NA, "error")
     if(any(ind)) {
         failures <- x[ind]
         x <- x[!ind]
         attr(x, "failures") <- failures
     }
-    if(!all(sapply(x, inherits, "w3c_markup_validate")))
-        stop("all elements must be w3c_markup_validate results")
+    if(!all(vapply(x, inherits, NA, "w3c_markup_validate")))
+        stop("All elements must be w3c_markup_validate results.")
     class(x) <- "w3c_markup_validate_db"
     x
 }
@@ -207,11 +220,13 @@ function(x, i)
 print.w3c_markup_validate_db <-
 function(x, ...)
 {
-    writeLines(sprintf("Valid: %d out of %d (errors: %d, warnings: %d)",
-                       sum(vapply(x, `[[`, NA, "valid"), na.rm = TRUE),
+    p <- lapply(x, w3c_markup_validate_results_pos_by_cat)
+    n <- do.call(rbind, lapply(p, lengths))
+    writeLines(sprintf("Valid: %d out of %d (%s)",
+                       sum(n[, 1L] + n[, 2L]) == 0,
                        length(x),
-                       sum(vapply(x, `[[`, 0L, "errorcount")),
-                       sum(vapply(x, `[[`, 0L, "warningcount"))))
+                       paste(colnames(n), colSums(n),
+                             sep = ": ", collapse = ", ")))
     if(n <- length(attr(x, "failures"))) {
         writeLines(sprintf("Failures: %d", n))
     }
@@ -244,32 +259,38 @@ function(..., recursive = FALSE)
 }
 
 w3c_markup_validate_files <-
-function(files, baseurl = w3c_markup_validate_baseurl(), opts = list()) {
-    verbose <- interactive()
+function(files, 
+         baseurl = w3c_markup_validate_baseurl(), opts = list(),
+         jar = NULL,
+         verbose = interactive(),
+         Ncpus = getOption("Ncpus", 1L)) {
+    FUN <- function(f)
+        w3c_markup_validate(baseurl = baseurl,
+                            file = f,
+                            opts = opts,
+                            jar = jar)
     results <-
-        lapply(files,
-               function(f) {
-                   if(verbose) message(sprintf("Processing %s ...", f))
-                   tryCatch(w3c_markup_validate(baseurl = baseurl,
-                                                file = f,
-                                                opts = opts),
-                            error = identity)
-               })
+        w3c_markup_validate_parLapply(files, FUN,
+                                      verbose = verbose,
+                                      Ncpus = Ncpus)
     w3c_markup_validate_db(results, files)
 }
 
 w3c_markup_validate_uris <-
-function(uris, baseurl = w3c_markup_validate_baseurl(), opts = list()) {
-    verbose <- interactive()
+function(uris, 
+         baseurl = w3c_markup_validate_baseurl(), opts = list(),
+         jar = NULL,
+         verbose = interactive(),
+         Ncpus = getOption("Ncpus", 1L)) {
+    FUN <- function(u)
+        w3c_markup_validate(baseurl = baseurl,
+                            uri = u,
+                            opts = opts,
+                            jar = jar)
     results <-
-        lapply(uris,
-               function(u) {
-                   if(verbose) message(sprintf("Processing %s ...", u))
-                   tryCatch(w3c_markup_validate(baseurl = baseurl,
-                                                uri = u,
-                                                opts = opts),
-                            error = identity)
-               })
+        w3c_markup_validate_parLapply(uris, FUN,
+                                      verbose = verbose,
+                                      Ncpus = Ncpus)
     w3c_markup_validate_db(results, uris)
 }
 
@@ -287,9 +308,9 @@ inspect.w3c_markup_validate_db <-
 function(x, details = TRUE, full = FALSE, ...)
 {
     if(!full) {
-        counts <-
-            sapply(x, function(e) e$errorcount + e$warningcount)
-        x <- x[counts > 0L]
+        p <- lapply(x, w3c_markup_validate_results_pos_by_cat)
+        n <- do.call(rbind, lapply(p, lengths))
+        x <- x[n[, 1L] + n[, 2L] > 0]
     }
     nmx <- names(x)
     writeLines(paste(unlist(Map(function(h, b)
@@ -300,28 +321,37 @@ function(x, details = TRUE, full = FALSE, ...)
                      collapse = "\n\n"))
 }
 
-is_invalid <-
-function(x)
-    identical(x$valid, FALSE)
-
-.status_and_headers <-
-function(response)
+w3c_markup_validate_parLapply <-
+function(X, FUN, ...,
+         verbose = interactive(),
+         Ncpus = getOption("Ncpus", 1L))
 {
-    lines <- parse_headers(response$headers)
-    parts <- strsplit(lines[1L], " ")[[1L]]
-    s <- c("Status-Code" = parts[2L],
-           "Reason-Phrase" = paste(parts[-c(1L, 2L)], collapse = " "))
-    lines <- lines[-1L]
-    h <- sub("[^:]+: (.*)", "\\1", lines)
-    names(h) <- sub("([^:]+):.*", "\\1", lines)
-    c(s, h)
+    stopifnot(is.character(X))
+    
+    one <- function(e) {
+        if(verbose)
+            message(sprintf("processing %s", e))
+        tryCatch(FUN(e, ...), error = identity)
+    }
+
+    if(Ncpus > 1L) {
+        if(.Platform$OS.type != "windows") {
+            out <- parallel::mclapply(X, one, mc.cores = Ncpus)
+        } else {
+            cl <- parallel::makeCluster(Ncpus)
+            args <- list(FUN, ...)      # Eval promises.
+            out <- parallel::parLapply(cl, X, one)
+            parallel::stopCluster(cl)
+        }
+    } else {
+        out <- lapply(X, one)
+    }
+
+    names(out) <- X
+    out
 }
 
-.xml_children_values <-
-function(x)
-{
-    kids <- xml_children(x)
-    y <- xml_text(kids)
-    names(y) <- xml_name(kids)
-    y
-}
+`%notin%` <-
+function(x, y)
+    is.na(match(x, y))
+
