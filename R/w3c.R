@@ -112,7 +112,19 @@ function(txt)
     ## the messages object only 'type' is mandatory, and if 'firstLine'
     ## is missing it is assumed to have the same value as 'lastLine'.
 
-    n <- NROW(out)    
+    n <- NROW(out)
+    if(!n) {
+        out <- data.frame(type = character(),
+                          subType = character(),
+                          firstLine = integer(),
+                          firstColumn = integer(),
+                          lastLine = integer(),
+                          lastColumn = integer(),
+                          message = character(),
+                          extract = character())
+        class(out) <- c("w3c_markup_validate", class(out))
+        return(out)
+    }
     for(k in setdiff(c("lastLine", "lastColumn", "firstColumn"),
                      names(out)))
         out[[k]] <- rep_len(NA_integer_, n)
@@ -223,7 +235,7 @@ function(x, ...)
     p <- lapply(x, w3c_markup_validate_results_pos_by_cat)
     n <- do.call(rbind, lapply(p, lengths))
     writeLines(sprintf("Valid: %d out of %d (%s)",
-                       sum(n[, 1L] + n[, 2L]) == 0,
+                       sum(n[, 1L] + n[, 2L] == 0),
                        length(x),
                        paste(colnames(n), colSums(n),
                              sep = ": ", collapse = ", ")))
@@ -237,12 +249,13 @@ as.data.frame.w3c_markup_validate_db <-
 function(x, row.names = NULL, optional = FALSE, ...)
 {
     y <- lapply(x, as.data.frame)
-    lens <- sapply(y, NROW)
+    lens <- vapply(y, NROW, 0L)
     do.call(rbind,
-            Map(cbind,
-                name = Map(rep.int, names(x), lens),
-                y,
-                stringsAsFactors = FALSE))
+            c(Map(cbind,
+                  name = Map(rep.int, names(x), lens),
+                  y,
+                  stringsAsFactors = FALSE),
+             list(make.row.names = FALSE)))
 }
 
 c.w3c_markup_validate_db <-
