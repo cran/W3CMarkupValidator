@@ -74,6 +74,8 @@ function(uri = NULL, file = NULL, string = NULL,
 w3c_markup_validate_via_jar <-
 function(uri = NULL, file = NULL, string = NULL, jar)
 {
+    if(isTRUE(jar))
+        jar <- system.file("java", "vnu.jar", package = "vnu.jar")
     if(!is.character(jar) ||
        length(jar) != 1L ||
        !file.exists(jar))
@@ -96,9 +98,13 @@ function(uri = NULL, file = NULL, string = NULL, jar)
             stop("You must specify one of 'uri', 'file' or 'string'.")
     }
 
-    txt <- system2(java,
-                   c("-jar", jar, "--stdout", "--format json", file),
-                   stdout = TRUE)
+    txt <- suppressWarnings(system2(java,
+                                    c("-jar",
+                                      jar,
+                                      "--stdout",
+                                      "--format json",
+                                      file),
+                                    stdout = TRUE))
 
     w3c_markup_validate_results_from_JSON(txt)
 }
@@ -142,6 +148,7 @@ function(txt)
 
     out
 }
+
 w3c_markup_validate_results_pos_by_cat <-
 function(x)
 {
@@ -193,7 +200,7 @@ function(x, details = TRUE, ...)
 
 as.data.frame.w3c_markup_validate <-
 function(x, row.names = NULL, optional = FALSE, ...)
-    x
+    `class<-`(x, "data.frame")
 
 w3c_markup_validate_db <-
 function(x, names = NULL)
@@ -232,13 +239,15 @@ function(x, i)
 print.w3c_markup_validate_db <-
 function(x, ...)
 {
-    p <- lapply(x, w3c_markup_validate_results_pos_by_cat)
-    n <- do.call(rbind, lapply(p, lengths))
-    writeLines(sprintf("Valid: %d out of %d (%s)",
-                       sum(n[, 1L] + n[, 2L] == 0),
-                       length(x),
-                       paste(colnames(n), colSums(n),
-                             sep = ": ", collapse = ", ")))
+    if(length(x)) {
+        p <- lapply(x, w3c_markup_validate_results_pos_by_cat)
+        n <- do.call(rbind, lapply(p, lengths))
+        writeLines(sprintf("Valid: %d out of %d (%s)",
+                           sum(n[, 1L] + n[, 2L] == 0),
+                           length(x),
+                           paste(colnames(n), colSums(n),
+                                 sep = ": ", collapse = ", ")))
+    }
     if(n <- length(attr(x, "failures"))) {
         writeLines(sprintf("Failures: %d", n))
     }

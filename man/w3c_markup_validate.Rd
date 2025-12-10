@@ -20,7 +20,7 @@ w3c_markup_validate(baseurl = w3c_markup_validate_baseurl(),
   \item{opts}{a named list with options to use for accessing the
     validation service.}
   \item{jar}{a character string giving the path to a \file{vnu.jar} for
-    direct local validation.}
+    direct local validation, or \code{TRUE} (see \sQuote{Details}).}
 }
 \details{
   Exactly one of \code{uri}, \code{file} or \code{string} must be given.
@@ -63,7 +63,9 @@ w3c_markup_validate(baseurl = w3c_markup_validate_baseurl(),
   See \url{https://validator.github.io/validator/} for more information.
   Using the latest version of \file{vnu.jar} from
   \url{https://github.com/validator/validator/releases/tag/latest} works
-  best.  
+  best.  Installing package \pkg{vnu.jar} from the repository at
+  \url{https://datacube.wu.ac.at} conveniently provides the JAR file,
+  see the examples.  Using \code{jar = TRUE} will use that JAR file.
 
   This class has methods for \code{\link{print}} for compactly
   summarizing the results, and an \code{\link{inspect}} method for
@@ -102,4 +104,17 @@ w3c_markup_validate(baseurl = w3c_markup_validate_baseurl(),
 ## (provided that the validation service is accessible):
 tryCatch(w3c_markup_validate(uri = "https://CRAN.R-project.org"),
          error = identity)
+## Use a local 'vnu.jar' provided by the 'vnu.jar' package from the
+## repository at <https://datacube.wu.ac.at>, installed via
+##   install.packages("vnu.jar", repos = "https://datacube.wu.ac.at/",
+##                    type = "source")
+## to install.  To be on the safe side:
+if(nzchar(jar <- system.file("java", "vnu.jar", package = "vnu.jar"))) {
+    file <- system.file("examples", "file2_novalid.html",
+                        package = "W3CMarkupValidator")
+    results <- w3c_markup_validate(file = file, jar = jar)
+    results
+}
+## Alternatively, with the 'vnu.jar' package installed, one can simply
+## use w3c_markup_validate(file = file, jar = TRUE).
 }
