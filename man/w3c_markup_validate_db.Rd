@@ -13,6 +13,7 @@ w3c_markup_validate_files(files,
                           baseurl = w3c_markup_validate_baseurl(),
                           opts = list(),
                           jar = NULL,
+                          concordance = FALSE,
                           verbose = interactive(),
                           Ncpus = getOption("Ncpus", 1L))
 
@@ -20,6 +21,7 @@ w3c_markup_validate_uris(uris,
                          baseurl = w3c_markup_validate_baseurl(),
                          opts = list(),
                          jar = NULL,
+                         concordance = FALSE,
                          verbose = interactive(),
                          Ncpus = getOption("Ncpus", 1L))
 }
@@ -32,8 +34,7 @@ w3c_markup_validate_uris(uris,
   \item{uris}{a character vector giving \acronym{URI}s to validate.}
   \item{baseurl}{a character string giving the \acronym{URL} of the W3C
     Markup Validation service to employ.}
-  \item{opts}{see \code{\link{w3c_markup_validate}}.}
-  \item{jar}{see \code{\link{w3c_markup_validate}}.}
+  \item{opts, jar, concordance}{see \code{\link{w3c_markup_validate}}.}
   \item{verbose}{a logical indicating if some \dQuote{progress report}
     should be given.} 
   \item{Ncpus}{the number of parallel processes to use for validating in

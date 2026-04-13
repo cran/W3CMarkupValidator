@@ -9,7 +9,7 @@
 \usage{
 w3c_markup_validate(baseurl = w3c_markup_validate_baseurl(),
                     uri = NULL, file = NULL, string = NULL,
-                    opts = list(), jar = NULL)
+                    opts = list(), jar = NULL, concordance = FALSE)
 }
 \arguments{
   \item{baseurl}{a character string giving the URL of the W3C Markup
@@ -21,6 +21,8 @@ w3c_markup_validate(baseurl = w3c_markup_validate_baseurl(),
     validation service.}
   \item{jar}{a character string giving the path to a \file{vnu.jar} for
     direct local validation, or \code{TRUE} (see \sQuote{Details}).}
+  \item{concordance}{a logical indicating whether to look for R
+    concordance information for mapping output to source locations.}
 }
 \details{
   Exactly one of \code{uri}, \code{file} or \code{string} must be given.
@@ -56,6 +58,10 @@ w3c_markup_validate(baseurl = w3c_markup_validate_baseurl(),
       the document source from around the point in source designated for
       the message by the line and column numbers.}
   }
+  If problems were found and concordance information is used and found,
+  then variables \code{srcFile} and \code{srcLine} are added giving the
+  mapping from output to source locations obtained by
+  \code{\link[tools]{matchConcordance}()}.
 
   Alternatively, one can also use the underling Nu HTML checker directly
   (via invoking the Java interpreter) using a local \file{vnu.jar} JAR

@@ -1,7 +1,3 @@
-use("curl")
-
-Sys.unsetenv("W3C_MARKUP_VALIDATOR_BASEURL")
-
 w3c_markup_validate_baseurl_default <-
 function()
     Sys.getenv("W3C_MARKUP_VALIDATOR_BASEURL",
@@ -25,20 +21,20 @@ local({
 w3c_markup_validate <-
 function(baseurl = w3c_markup_validate_baseurl(),
          uri = NULL, file = NULL, string = NULL,
-         opts = list(), jar = NULL)
+         opts = list(), jar = NULL, concordance = FALSE)
 {
     if(!is.null(jar))
         w3c_markup_validate_via_jar(uri, file, string,
-                                    jar)
+                                    jar, concordance)
     else
         w3c_markup_validate_via_web(uri, file, string,
-                                    baseurl, opts)
+                                    baseurl, opts, concordance)
 }
 
 w3c_markup_validate_via_web <-
 function(uri = NULL, file = NULL, string = NULL,
          baseurl = w3c_markup_validate_baseurl(),
-         opts = list())
+         opts = list(), concordance = FALSE)
 {
     ## Be nice and add the question mark at the end if not given.
     if(!endsWith(baseurl, "?"))
@@ -68,11 +64,25 @@ function(uri = NULL, file = NULL, string = NULL,
     if((as.integer(status) %/% 100) != 2L)
         stop("Validation request failed")
 
-    w3c_markup_validate_results_from_JSON(rawToChar(res$content))
+    bad <- w3c_markup_validate_results_from_JSON(rawToChar(res$content))
+
+    if(NROW(bad) && concordance) {
+        if(is.null(file)) {
+            file <- tempfile()
+            on.exit(unlink(file))
+            if(!is.null(uri))
+                utils::download.file(uri, file, quiet = TRUE)
+            else if(!is.null(string))
+                writeLines(string, file, useBytes = TRUE)
+        }
+        txt <- readLines(file)
+        bad <- w3c_markup_validate_add_concordance(bad, txt)
+    }
 }
     
 w3c_markup_validate_via_jar <-
-function(uri = NULL, file = NULL, string = NULL, jar)
+function(uri = NULL, file = NULL, string = NULL, jar,
+         concordance = FALSE)
 {
     if(isTRUE(jar))
         jar <- system.file("java", "vnu.jar", package = "vnu.jar")
@@ -106,7 +116,14 @@ function(uri = NULL, file = NULL, string = NULL, jar)
                                       file),
                                     stdout = TRUE))
 
-    w3c_markup_validate_results_from_JSON(txt)
+    bad <- w3c_markup_validate_results_from_JSON(txt)
+    
+    if(NROW(bad) && concordance) {
+        txt <- readLines(file)
+        bad <- w3c_markup_validate_add_concordance(bad, txt)
+    }
+
+    bad
 }
 
 w3c_markup_validate_results_from_JSON <-
@@ -136,6 +153,8 @@ function(txt)
         out[[k]] <- rep_len(NA_integer_, n)
     if("firstLine" %notin% names(out))
         out$firstLine <- out$lastLine
+    if(any(i <- is.na(out$firstLine)))
+        out$firstLine[i] <- out$lastLine[i]
     for(k in setdiff(c("message", "extract", "subType"),
                      names(out)))
         out[[k]] <- rep_len(NA_character_, n)
@@ -147,6 +166,19 @@ function(txt)
     class(out) <- c("w3c_markup_validate", class(out))
 
     out
+}
+
+w3c_markup_validate_add_concordance <-
+function(bad, txt)
+{
+    loc <- tools::as.Rconcordance(grep("^<!-- concordance:", txt,
+                                       value = TRUE))
+    if(!is.null(loc)) {
+        num <- bad$firstLine
+        bad <- cbind(bad, tools::matchConcordance(num, loc))
+    }
+
+    bad
 }
 
 w3c_markup_validate_results_pos_by_cat <-
@@ -283,14 +315,15 @@ function(..., recursive = FALSE)
 w3c_markup_validate_files <-
 function(files, 
          baseurl = w3c_markup_validate_baseurl(), opts = list(),
-         jar = NULL,
+         jar = NULL, concordance = FALSE,
          verbose = interactive(),
          Ncpus = getOption("Ncpus", 1L)) {
     FUN <- function(f)
         w3c_markup_validate(baseurl = baseurl,
                             file = f,
                             opts = opts,
-                            jar = jar)
+                            jar = jar,
+                            concordance = concordance)
     results <-
         w3c_markup_validate_parLapply(files, FUN,
                                       verbose = verbose,
@@ -301,14 +334,15 @@ function(files,
 w3c_markup_validate_uris <-
 function(uris, 
          baseurl = w3c_markup_validate_baseurl(), opts = list(),
-         jar = NULL,
+         jar = NULL, concordance = FALSE,
          verbose = interactive(),
          Ncpus = getOption("Ncpus", 1L)) {
     FUN <- function(u)
         w3c_markup_validate(baseurl = baseurl,
                             uri = u,
                             opts = opts,
-                            jar = jar)
+                            jar = jar,
+                            concordance = concordance)
     results <-
         w3c_markup_validate_parLapply(uris, FUN,
                                       verbose = verbose,
