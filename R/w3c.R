@@ -78,6 +78,8 @@ function(uri = NULL, file = NULL, string = NULL,
         txt <- readLines(file)
         bad <- w3c_markup_validate_add_concordance(bad, txt)
     }
+
+    bad
 }
     
 w3c_markup_validate_via_jar <-
@@ -174,8 +176,10 @@ function(bad, txt)
     loc <- tools::as.Rconcordance(grep("^<!-- concordance:", txt,
                                        value = TRUE))
     if(!is.null(loc)) {
+        cls <- class(bad)        
         num <- bad$firstLine
         bad <- cbind(bad, tools::matchConcordance(num, loc))
+        class(bad) <- cls
     }
 
     bad
@@ -201,12 +205,17 @@ format.w3c_markup_validate <-
 function(x, details = TRUE, ...)
 {
     fmt <- function(m) {
-        sprintf("  %s %s  %s",
+        sprintf("  %s %s%s  %s",
                 format(c("line", m$firstLine), justify = "right"),
-                format(c(" col", m$firstColumn), justify = "right"),
+                format(c("col", m$firstColumn), justify = "right"),
+                if(!is.null(m$srcFile)) {
+                    format(c(" src",
+                             sprintf(" %s:%s",
+                                     m$srcFile, m$srcLine)),
+                           justify = "right")
+                } else "",
                 c("message",
                   gsub("[[:space:]]*\n[[:space:]]*", "  ", m$message)))
-                  
     }
 
     p <- w3c_markup_validate_results_pos_by_cat(x)
